@@ -48,6 +48,42 @@ const MODAL_DATA: Record<string, Hotspot[]> = {
   ]
 };
 
+const useOrganicTexture = () => {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Base color
+      ctx.fillStyle = '#808080';
+      ctx.fillRect(0, 0, 512, 512);
+      
+      // Procedural organic cellular noise
+      for (let i = 0; i < 4000; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const radius = Math.random() * 8 + 2;
+        const shade = 128 + (Math.random() - 0.5) * 80;
+        
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, `rgba(${shade}, ${shade}, ${shade}, 0.8)`);
+        gradient.addColorStop(1, `rgba(${shade}, ${shade}, ${shade}, 0)`);
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    return tex;
+  }, []);
+};
+
 const Annotation = ({ hotspot, onSelect }: { hotspot: Hotspot, onSelect: (h: Hotspot) => void }) => {
   return (
     <Html position={hotspot.position} center>
@@ -71,6 +107,7 @@ const Annotation = ({ hotspot, onSelect }: { hotspot: Hotspot, onSelect: (h: Hot
 
 // Organic Ribosome component
 const Ribosomes = ({ count = 30, color = "#22c55e", areaSize = [0.4, 1.4, 0.4] }) => {
+  const organicTex = useOrganicTexture();
   const points = useRef(Array.from({ length: count }, () => ({
     pos: [
       (Math.random() - 0.5) * areaSize[0],
@@ -93,7 +130,7 @@ const Ribosomes = ({ count = 30, color = "#22c55e", areaSize = [0.4, 1.4, 0.4] }
       {points.current.map((p, i) => (
         <mesh key={i} position={p.pos}>
           <sphereGeometry args={[p.size, 16, 16]} />
-          <MeshDistortMaterial color={color} transparent opacity={0.6} roughness={0.6} emissive={color} emissiveIntensity={0.4} distort={0.2} speed={1.5} />
+          <MeshDistortMaterial color={color} transparent opacity={0.6} roughness={0.8} bumpMap={organicTex} bumpScale={0.02} emissive={color} emissiveIntensity={0.4} distort={0.2} speed={1.5} />
         </mesh>
       ))}
     </group>
@@ -103,6 +140,7 @@ const Ribosomes = ({ count = 30, color = "#22c55e", areaSize = [0.4, 1.4, 0.4] }
 // Helical Flagellum with rotary motor simulation
 const Flagellum = ({ position, rotation, color, count = 1 }: { position: [number, number, number], rotation: [number, number, number], color: string, count?: number }) => {
   const ref = useRef<THREE.Group>(null);
+  const organicTex = useOrganicTexture();
   
   const curve = useMemo(() => {
     const points = [];
@@ -143,7 +181,7 @@ const Flagellum = ({ position, rotation, color, count = 1 }: { position: [number
           <group key={i}>
             <mesh>
               <tubeGeometry args={[curve, 64, 0.012, 16, false]} />
-              <MeshWobbleMaterial color={color} factor={0.2} speed={3} roughness={0.4} />
+              <MeshWobbleMaterial color={color} factor={0.2} speed={3} roughness={0.8} bumpMap={organicTex} bumpScale={0.02} />
             </mesh>
           </group>
         ))}
@@ -201,6 +239,7 @@ const Plasmid = ({ position, color = "#fde047" }: { position: [number, number, n
 const Bacterium = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) => void }) => {
   const groupRef = useRef<THREE.Group>(null);
   const hotspots = MODAL_DATA[modelId] || MODAL_DATA.bacterium;
+  const organicTex = useOrganicTexture();
   
   useFrame((state) => {
     if (groupRef.current) {
@@ -223,7 +262,9 @@ const Bacterium = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotsp
           color={mainColor} 
           opacity={0.3} 
           metalness={0.1} 
-          roughness={0.6} 
+          roughness={0.8} 
+          bumpMap={organicTex}
+          bumpScale={0.02}
           transparent
           distort={0.15}
           speed={2}
@@ -241,9 +282,11 @@ const Bacterium = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotsp
           radius={1} 
           transparent 
           opacity={0.4} 
+          bumpMap={organicTex}
+          bumpScale={0.03}
           side={THREE.DoubleSide}
-          metalness={0.5}
-          roughness={0.2}
+          metalness={0.2}
+          roughness={0.6}
           emissive={emissiveColor}
           emissiveIntensity={0.6}
         />
@@ -300,6 +343,7 @@ const Bacterium = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotsp
 const Virus = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) => void }) => {
   const groupRef = useRef<THREE.Group>(null);
   const hotspots = MODAL_DATA[modelId] || MODAL_DATA.virus;
+  const organicTex = useOrganicTexture();
   
   useFrame((state) => {
     if (groupRef.current) {
@@ -324,7 +368,9 @@ const Virus = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
             <MeshDistortMaterial 
               color={virusColor} 
               opacity={0.2} 
-              roughness={0.7} 
+              roughness={0.8} 
+              bumpMap={organicTex}
+              bumpScale={0.03}
               transparent 
               distort={0.15}
               speed={2}
@@ -333,7 +379,7 @@ const Virus = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
           </mesh>
           <mesh>
             <sphereGeometry args={[1.4, 64, 64]} />
-            <MeshDistortMaterial color={virusColor} transparent opacity={0.4} speed={1.5} distort={0.25} metalness={0.5} roughness={0.1} emissive={emissiveColor} emissiveIntensity={0.5} />
+            <MeshDistortMaterial color={virusColor} transparent opacity={0.4} speed={1.5} distort={0.25} metalness={0.2} roughness={0.6} bumpMap={organicTex} bumpScale={0.02} emissive={emissiveColor} emissiveIntensity={0.5} />
           </mesh>
         </>
       )}
@@ -347,7 +393,9 @@ const Virus = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
           transparent 
           opacity={0.9}
           metalness={0.2}
-          roughness={0.6}
+          roughness={0.8}
+          bumpMap={organicTex}
+          bumpScale={0.02}
           distort={0.05}
           speed={1}
           emissive={emissiveColor}
@@ -388,6 +436,7 @@ const Virus = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
 
 // Phage Organic Tail Fiber
 const PhageLeg = () => {
+  const organicTex = useOrganicTexture();
   const curve = useMemo(() => new THREE.CatmullRomCurve3([
     new THREE.Vector3(0.1, -0.1, 0),
     new THREE.Vector3(0.3, -0.4, 0.1),
@@ -397,7 +446,7 @@ const PhageLeg = () => {
   return (
     <mesh>
       <tubeGeometry args={[curve, 32, 0.015, 8, false]} />
-      <MeshWobbleMaterial color="#0f766e" factor={0.5} speed={2} roughness={0.4} />
+      <MeshWobbleMaterial color="#0f766e" factor={0.5} speed={2} roughness={0.8} bumpMap={organicTex} bumpScale={0.02} />
     </mesh>
   );
 };
@@ -437,6 +486,7 @@ const ER = ({ position, rotation }: { position: [number, number, number], rotati
 const Yeast = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) => void }) => {
   const groupRef = useRef<THREE.Group>(null);
   const hotspots = MODAL_DATA[modelId] || MODAL_DATA.yeast;
+  const organicTex = useOrganicTexture();
   
   useFrame((state) => {
     if (groupRef.current) {
@@ -456,7 +506,9 @@ const Yeast = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
           color="#f59e0b" 
           opacity={0.4} 
           metalness={0.1} 
-          roughness={0.6} 
+          roughness={0.8} 
+          bumpMap={organicTex}
+          bumpScale={0.03}
           transparent
           distort={0.1}
           speed={2}
@@ -467,20 +519,20 @@ const Yeast = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
       {/* Inner organic layer */}
       <mesh scale={[1, 1.1, 1]}>
         <sphereGeometry args={[1, 64, 64]} />
-        <MeshDistortMaterial color="#f59e0b" speed={2.5} distort={0.4} transparent opacity={0.5} roughness={0.3} metalness={0.5} emissive="#b45309" emissiveIntensity={0.3} />
+        <MeshDistortMaterial color="#f59e0b" speed={2.5} distort={0.4} transparent opacity={0.5} roughness={0.6} metalness={0.2} bumpMap={organicTex} bumpScale={0.02} emissive="#b45309" emissiveIntensity={0.3} />
       </mesh>
 
       {/* Internal Organelles */}
       {/* Nucleus */}
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[0.35, 32, 32]} />
-        <meshStandardMaterial color="#78350f" metalness={0.4} roughness={0.2} emissive="#78350f" emissiveIntensity={0.3} />
+        <meshStandardMaterial color="#78350f" metalness={0.2} roughness={0.6} bumpMap={organicTex} bumpScale={0.01} emissive="#78350f" emissiveIntensity={0.3} />
       </mesh>
 
       {/* Vacuole */}
       <mesh position={[-0.35, -0.2, 0.45]}>
         <sphereGeometry args={[0.25, 24, 24]} />
-        <meshStandardMaterial color="#ffedd5" transparent opacity={0.8} metalness={0.9} roughness={0.05} />
+        <meshStandardMaterial color="#ffedd5" transparent opacity={0.8} metalness={0.5} roughness={0.3} bumpMap={organicTex} bumpScale={0.01} />
       </mesh>
 
       <Mitochondrion position={[0.4, -0.4, 0.2]} rotation={[0.5, 0.2, 0.1]} />
@@ -498,7 +550,9 @@ const Yeast = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
            <MeshDistortMaterial 
              color="#fbbf24" 
              opacity={0.4}
-             roughness={0.6} 
+             roughness={0.8} 
+             bumpMap={organicTex}
+             bumpScale={0.03}
              transparent 
              distort={0.15}
              speed={2}
@@ -509,12 +563,12 @@ const Yeast = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
         {/* Daughter inner layer */}
         <mesh scale={0.5}>
            <sphereGeometry args={[1, 32, 32]} />
-           <MeshDistortMaterial color="#fbbf24" speed={3} distort={0.35} emissive="#d97706" emissiveIntensity={0.3} transparent opacity={0.7} />
+           <MeshDistortMaterial color="#fbbf24" speed={3} distort={0.35} emissive="#d97706" emissiveIntensity={0.3} transparent opacity={0.7} roughness={0.6} bumpMap={organicTex} bumpScale={0.02} />
         </mesh>
         {/* Connection point */}
         <mesh position={[-0.3, -0.3, 0]} rotation={[0, 0, -Math.PI / 4]}>
            <capsuleGeometry args={[0.2, 0.4, 16, 16]} />
-           <MeshWobbleMaterial color="#f59e0b" factor={0.2} speed={2} />
+           <MeshWobbleMaterial color="#f59e0b" factor={0.2} speed={2} roughness={0.6} bumpMap={organicTex} bumpScale={0.02} />
         </mesh>
       </group>
 
@@ -526,6 +580,7 @@ const Yeast = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) 
 const Parasite = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspot) => void }) => {
   const groupRef = useRef<THREE.Group>(null);
   const hotspots = MODAL_DATA[modelId] || MODAL_DATA.parasite;
+  const organicTex = useOrganicTexture();
   
   useFrame((state) => {
     if (groupRef.current) {
@@ -544,7 +599,9 @@ const Parasite = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspo
         <MeshDistortMaterial 
           color="#d946ef" 
           opacity={0.3}
-          roughness={0.6} 
+          roughness={0.8} 
+          bumpMap={organicTex}
+          bumpScale={0.03}
           transparent 
           distort={0.1}
           speed={1.5}
@@ -555,13 +612,13 @@ const Parasite = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspo
       {/* Trophozoite Body (Inner distorted layer) */}
       <mesh rotation={[0, 0, Math.PI / 6]}>
         <capsuleGeometry args={[0.4, 2, 32, 64]} />
-        <MeshDistortMaterial color="#d946ef" speed={2} distort={0.3} metalness={0.5} roughness={0.2} emissive="#701a75" emissiveIntensity={0.5} transparent opacity={0.8} />
+        <MeshDistortMaterial color="#d946ef" speed={2} distort={0.3} metalness={0.2} roughness={0.6} bumpMap={organicTex} bumpScale={0.02} emissive="#701a75" emissiveIntensity={0.4} transparent opacity={0.6} />
       </mesh>
 
       {/* Apical Complex */}
       <mesh position={[0, 1.15, 0]}>
         <capsuleGeometry args={[0.18, 0.3, 16, 32]} />
-        <MeshDistortMaterial color="#a21caf" transparent opacity={0.8} roughness={0.5} distort={0.1} speed={1.5} />
+        <MeshDistortMaterial color="#a21caf" transparent opacity={0.8} roughness={0.6} bumpMap={organicTex} bumpScale={0.02} distort={0.1} speed={1.5} />
       </mesh>
 
       {/* Internal Micronemes/Organelles */}
@@ -571,18 +628,18 @@ const Parasite = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspo
       <group position={[0, 0.8, 0]}>
         <mesh position={[0.1, 0, 0]} rotation={[0, 0, 0.2]}>
           <capsuleGeometry args={[0.05, 0.3, 4, 8]} />
-          <meshStandardMaterial color="#9d174d" />
+          <meshStandardMaterial color="#9d174d" roughness={0.8} bumpMap={organicTex} bumpScale={0.02} />
         </mesh>
         <mesh position={[-0.1, 0, 0]} rotation={[0, 0, -0.2]}>
           <capsuleGeometry args={[0.05, 0.3, 4, 8]} />
-          <meshStandardMaterial color="#9d174d" />
+          <meshStandardMaterial color="#9d174d" roughness={0.8} bumpMap={organicTex} bumpScale={0.02} />
         </mesh>
       </group>
 
       {/* Nucleus */}
       <mesh position={[0, -0.2, 0]}>
         <sphereGeometry args={[0.25, 32, 32]} />
-        <meshStandardMaterial color="#701a75" emissive="#db2777" emissiveIntensity={0.4} />
+        <meshStandardMaterial color="#701a75" emissive="#db2777" emissiveIntensity={0.2} roughness={0.6} bumpMap={organicTex} bumpScale={0.02} />
       </mesh>
 
       {hotspots.map((h, i) => <Annotation key={i} hotspot={h} onSelect={onSelect} />)}
@@ -592,6 +649,7 @@ const Parasite = ({ modelId, onSelect }: { modelId: string, onSelect: (h: Hotspo
 
 const Phage = ({ onSelect }: { onSelect: (h: Hotspot) => void }) => {
   const groupRef = useRef<THREE.Group>(null);
+  const organicTex = useOrganicTexture();
   useFrame((state) => {
     if (groupRef.current) {
       groupRef.current.rotation.y += 0.008;
@@ -609,46 +667,46 @@ const Phage = ({ onSelect }: { onSelect: (h: Hotspot) => void }) => {
       {/* Head (Capsid) */}
       <mesh position={[0, 1.2, 0]}>
         <icosahedronGeometry args={[0.5, 5]} />
-        <MeshDistortMaterial color={phageColor} flatShading transparent opacity={0.9} roughness={0.6} distort={0.1} speed={1.5} />
+        <MeshDistortMaterial color={phageColor} flatShading transparent opacity={0.9} roughness={0.8} bumpMap={organicTex} bumpScale={0.02} distort={0.1} speed={1.5} />
       </mesh>
       <mesh position={[0, 1.2, 0]} scale={0.4}>
         <torusKnotGeometry args={[0.3, 0.1, 64, 8]} />
-        <MeshWobbleMaterial color={glowColor} emissive={glowColor} emissiveIntensity={0.8} factor={0.4} speed={2} />
+        <MeshWobbleMaterial color={glowColor} emissive={glowColor} emissiveIntensity={0.6} factor={0.4} speed={2} roughness={0.4} bumpMap={organicTex} bumpScale={0.02} />
       </mesh>
 
       {/* Collar */}
       <mesh position={[0, 0.9, 0]}>
         <cylinderGeometry args={[0.1, 0.15, 0.05, 12]} />
-        <meshStandardMaterial color={phageColor} />
+        <meshStandardMaterial color={phageColor} roughness={0.8} bumpMap={organicTex} bumpScale={0.02} />
       </mesh>
 
       {/* Tail Tube (Sheath) */}
       <mesh position={[0, 0.3, 0]}>
         <cylinderGeometry args={[0.08, 0.08, 1.2, 12]} />
-        <meshStandardMaterial color={phageColor} metalness={0.5} />
+        <meshStandardMaterial color={phageColor} metalness={0.2} roughness={0.6} bumpMap={organicTex} bumpScale={0.02} />
       </mesh>
       {/* Spring-like Sheath */}
       <mesh position={[0, 0.8, 0]} rotation={[0, 0, 0]}>
         <torusGeometry args={[0.09, 0.02, 8, 32]} />
-        <meshStandardMaterial color={phageColor} />
+        <meshStandardMaterial color={phageColor} roughness={0.8} />
       </mesh>
       <mesh position={[0, 0.6, 0]} rotation={[0, 0, 0]}>
         <torusGeometry args={[0.09, 0.02, 8, 32]} />
-        <meshStandardMaterial color={phageColor} />
+        <meshStandardMaterial color={phageColor} roughness={0.8} />
       </mesh>
       <mesh position={[0, 0.4, 0]} rotation={[0, 0, 0]}>
         <torusGeometry args={[0.09, 0.02, 8, 32]} />
-        <meshStandardMaterial color={phageColor} />
+        <meshStandardMaterial color={phageColor} roughness={0.8} />
       </mesh>
       <mesh position={[0, 0.2, 0]} rotation={[0, 0, 0]}>
         <torusGeometry args={[0.09, 0.02, 8, 32]} />
-        <meshStandardMaterial color={phageColor} />
+        <meshStandardMaterial color={phageColor} roughness={0.8} />
       </mesh>
 
       {/* Base Plate */}
       <mesh position={[0, -0.3, 0]}>
         <cylinderGeometry args={[0.18, 0.18, 0.1, 16]} />
-        <MeshWobbleMaterial color={phageColor} metalness={0.9} factor={0.1} speed={1} />
+        <MeshWobbleMaterial color={phageColor} metalness={0.2} roughness={0.6} bumpMap={organicTex} bumpScale={0.02} factor={0.1} speed={1} />
       </mesh>
 
       {/* Tail Fibers (Legs) */}
