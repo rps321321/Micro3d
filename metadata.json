@@ -1,0 +1,6 @@
+{
+  "name": "MicroMed",
+  "description": "An interactive microbiology learning platform for medical students, featuring detailed quizzes, 3D microorganism models, and a spaced repetition system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
